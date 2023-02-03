@@ -9,8 +9,13 @@
 void l1_normalize(image im)
 {
     // TODO
+    float sum = 0;
     for(int i = 0; i < im.w * im.h; i++) {
-        im.data[i] /= (float) im.w * im.h;
+        sum += im.data[i];
+    }
+
+    for (int i = 0; i < im.w * im.h; i++) {
+        im.data[i] /= sum;
     }
 }
 
@@ -41,17 +46,7 @@ image convolve_image(image im, image filter, int preserve)
                         float sum = 0;
                         for (int fh = 0; fh < filter.h; fh++) {
                             for (int fw = 0; fw < filter.w; fw++) {
-                                if ((h - heightOffset + fh >= 0 && w - widthOffset + fw >= 0) &&
-                                    (h - heightOffset + fh < im.h && w - widthOffset + fw < im.w)) {
-                                        sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h-heightOffset+fh, w-widthOffset+fw);
-                                } else if (!(h - heightOffset + fh >= 0 && h - heightOffset + fh < im.h) && 
-                                    !(w - widthOffset + fw >= 0 && w - widthOffset + fw < im.w)){
-                                        sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h, w);
-                                } else if (!(h - heightOffset + fh >= 0 && h - heightOffset + fh < im.h)) {
-                                    sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h, w - widthOffset + fw);
-                                } else {
-                                    sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h - heightOffset + fh, w);
-                                }
+                                sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h-heightOffset+fh, w-widthOffset+fw);
                             }
                         }
                         set_pixel(newIm, c, h, w, sum);
@@ -66,17 +61,7 @@ image convolve_image(image im, image filter, int preserve)
                     for (int c = 0; c < im.c; c++) {
                         for (int fh = 0; fh < filter.h; fh++) {
                             for (int fw = 0; fw < filter.w; fw++) {
-                                if ((h - heightOffset + fh >= 0 && w - widthOffset + fw >= 0) &&
-                                    (h - heightOffset + fh < im.h && w - widthOffset + fw < im.w)) {
-                                        sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h-heightOffset+fh, w-widthOffset+fw);
-                                } else if (!(h - heightOffset + fh >= 0 && h - heightOffset + fh < im.h) && 
-                                    !(w - widthOffset + fw >= 0 && w - widthOffset + fw < im.w)){
-                                        sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h, w);
-                                } else if (!(h - heightOffset + fh >= 0 && h - heightOffset + fh < im.h)) {
-                                    sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h, w - widthOffset + fw);
-                                } else {
-                                    sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h - heightOffset + fh, w);
-                                }
+                                sum += get_pixel(filter, c ,fh, fw) * get_pixel(im, c, h-heightOffset+fh, w-widthOffset+fw);
                             }
                         }
                     }
@@ -128,11 +113,9 @@ image make_emboss_filter()
     image filter = make_image(1, 3, 3);
     filter.data[0] = -2;
     filter.data[1] = -1;
-    filter.data[2] = 0;
     filter.data[3] = -1;
     filter.data[4] = 1;
     filter.data[5] = 1;
-    filter.data[6] = 0;
     filter.data[7] = 1;
     filter.data[8] = 2;
     return filter;
@@ -149,46 +132,137 @@ image make_emboss_filter()
 image make_gaussian_filter(float sigma)
 {
     // TODO
-    return make_image(1,1,1);
+    int size = ceil(6*sigma);
+    if (size % 2 == 0) {
+        size++;
+    }
+
+    int half = floor(size/2);
+
+    image filter = make_image(1, size, size);
+    for (float h = 0; h < size; h++) {
+        for (float w = 0; w < size; w++) {
+            float value = 1/(TWOPI*sigma*sigma) * exp(-((w-half)*(w-half)+(h-half)*(h-half))/(2*sigma*sigma));
+            set_pixel(filter, 0, h, w, value);
+        }
+    }
+    l1_normalize(filter);
+    return filter;
 }
 
 image add_image(image a, image b)
 {
     // TODO
-    return make_image(1,1,1);
+    assert(a.c == b.c && a.w == b.w && a.h == b.h);
+
+    image result = make_image(a.c, a.h, a.w);
+    for (int i = 0; i < a.c * a.h * a.w; i++) {
+        result.data[i] = a.data[i] + b.data[i];
+    }
+
+    return result;
 }
 
 image sub_image(image a, image b)
 {
     // TODO
-    return make_image(1,1,1);
+    assert(a.c == b.c && a.w == b.w && a.h == b.h);
+
+    image result = make_image(a.c, a.h, a.w);
+    for (int i = 0; i < a.c * a.h * a.w; i++) {
+        result.data[i] = a.data[i] - b.data[i];
+    }
+    
+    return result;
 }
 
 image make_gx_filter()
 {
     // TODO
-    return make_image(1,1,1);
+    image filter = make_image(1, 3, 3);
+    filter.data[0] = -1;
+    filter.data[2] = 1;
+    filter.data[3] = -2;
+    filter.data[5] = 2;
+    filter.data[6] = -1;
+    filter.data[8] = 1;
+    return filter;
 }
 
 image make_gy_filter()
 {
     // TODO
-    return make_image(1,1,1);
+    image filter = make_image(1, 3, 3);
+    filter.data[0] = -1;
+    filter.data[1] = -2;
+    filter.data[2] = -1;
+    filter.data[6] = 1;
+    filter.data[7] = 2;
+    filter.data[8] = 1;
+    return filter;
 }
 
 void feature_normalize(image im)
 {
     // TODO
+    float max = im.data[0];
+    float min = im.data[0];
+    float range;
+    for (int i = 0; i < im.c * im.w * im.h; i++) {
+        float curr = im.data[i];
+        if (curr < min) {
+            min = curr;
+        }
+
+        if (curr > max) {
+            max = curr;
+        }
+    }
+    range = max - min;
+    for (int i = 0; i < im.c * im.w * im.h; i++) {
+        im.data[i] = range == 0 ? 0 : (im.data[i] - min)/range;
+    }
 }
 
 image *sobel_image(image im)
 {
     // TODO
-    return calloc(2, sizeof(image));
+    image* imgs = calloc(2, sizeof(image));
+    image gxf = make_gx_filter();
+    image gyf = make_gy_filter();
+    image gx = convolve_image(im, gxf, 0);
+    image gy = convolve_image(im, gyf, 0);
+
+    imgs[0] = make_image(1, im.h, im.w);
+    imgs[1] = make_image(1, im.h, im.w);
+
+    for (int i = 0; i < im.h * im.w; i++) {
+        imgs[0].data[i] = sqrt(pow(gx.data[i], 2) + pow(gy.data[i], 2));
+        imgs[1].data[i] = atan2(gy.data[i], gx.data[i]);
+    }
+    return imgs;
 }
 
 image colorize_sobel(image im)
 {
     // TODO
-    return make_image(1,1,1);
+    image filter = make_gaussian_filter(3);
+    im = convolve_image(im, filter, 1);
+    image* imgs = sobel_image(im);
+    image mag = imgs[0];
+    image theta = imgs[1];
+    feature_normalize(mag);
+    feature_normalize(theta);
+
+    image result = make_image(3, im.h, im.w);
+    for (int h = 0; h < im.h; h++) {
+        for (int w = 0; w < im.w; w++) {
+            set_pixel(result, 2, h, w, get_pixel(mag, 0, h, w));
+            set_pixel(result, 1, h, w, get_pixel(mag, 0, h, w));
+            set_pixel(result, 0, h, w, get_pixel(theta, 0, h, w)); 
+        }
+    }
+    hsv_to_rgb(result);
+    clamp_image(result);
+    return result;
 }
