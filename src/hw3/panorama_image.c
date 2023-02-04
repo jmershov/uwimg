@@ -205,12 +205,11 @@ point project_point(matrix H, point p)
     // Remember that homogeneous coordinates are equivalent up to scalar.
     // Have to divide by.... something...
     point q = make_point(0, 0);
-    matrix x = make_matrix(3, 1);
-    x.data[0][0] = p.x;
-    x.data[1][0] = p.y;
-    x.data[2][0] = 1.0;
+    c.data[0][0] = p.x;
+    c.data[1][0] = p.y;
+    c.data[2][0] = 1.0;
 
-    matrix mq = matrix_mult_matrix(H, x);
+    matrix mq = matrix_mult_matrix(H, c);
     q.x = mq.data[0][0] / mq.data[2][0];
     q.y = mq.data[1][0] / mq.data[2][0];
 
@@ -357,7 +356,7 @@ matrix RANSAC(match *m, int n, float thresh, int k, int cutoff)
     //             return it immediately
     // if we get to the end return the best homography
 
-    for (int i = 0; i < 0; i++) {
+    for (int i = 0; i < k; i++) {
         randomize_matches(m, n);
 
         matrix H = compute_homography(m, e);
@@ -401,12 +400,15 @@ image combine_images(image a, image b, matrix H)
     botright.y = MAX(c1.y, MAX(c2.y, MAX(c3.y, c4.y)));
     topleft.x = MIN(c1.x, MIN(c2.x, MIN(c3.x, c4.x)));
     topleft.y = MIN(c1.y, MIN(c2.y, MIN(c3.y, c4.y)));
+    fprintf(stderr,"%f %f %f %f\n",c1.y,c2.y,c3.y,c4.y);
+    fprintf(stderr,"topl %f botr %f %d\n",topleft.y,botright.y,a.w);
 
     // Find how big our new image should be and the offsets from image a.
     int dx = MIN(0, topleft.x);
     int dy = MIN(0, topleft.y);
     int w = MAX(a.w, botright.x) - dx;
     int h = MAX(a.h, botright.y) - dy;
+    fprintf(stderr,"%d %d %d %d\n",dx,dy,w,h);
 
     // Can disable this if you are making very big panoramas.
     // Usually this means there was an error in calculating H.
@@ -423,7 +425,7 @@ image combine_images(image a, image b, matrix H)
         for(j = 0; j < a.h; ++j){
             for(i = 0; i < a.w; ++i){
                 // TODO: fill in.
-                set_pixel(c, k, j, i, get_pixel(a, k, j, i));
+                set_pixel(c, k, j-dy, i-dx, get_pixel(a, k, j, i));
             }
         }
     }
@@ -433,19 +435,22 @@ image combine_images(image a, image b, matrix H)
     // and see if their projection from a coordinates to b coordinates falls
     // inside of the bounds of image b. If so, use bilinear interpolation to
     // estimate the value of b at that projection, then fill in image c.
-    /*
+    
+    fprintf(stderr,"%d %d %d %d\n",a.h, a.w, c.h,c.w);
     float value = 0.0;
-    for (k = 0; k < a.c; ++k) {
+    for (k = 0; k < b.c; ++k) {
         for (j = topleft.y; j < botright.y; ++j) {
             for (i = topleft.x; i < botright.x; ++i) {
+//        for (j=0; j<c.h; j++) {
+//            for (i=0; i<c.w; i++) {
                 point p = project_point(H, make_point(j, i));
-                if (p.x >= 0 && p.y >= 0 && p.x < b.h && p.y < b.w) {
+                if (p.x >= 0 && p.y >= 0 && p.y < b.h && p.x < b.w) {
                     value = bilinear_interpolate(b, k, p.y, p.x);
-                    set_pixel(c, k, j-dy, i-dx, value);
+                    set_pixel(c, k, j, i, value);
                 }
             }
         }
-    }*/
+    }
     return c;
 }
 
