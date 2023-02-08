@@ -366,7 +366,7 @@ matrix RANSAC(match *m, int n, float thresh, int k, int cutoff)
 
         int inliers = model_inliers(H, m, n, thresh);
         
-        if (inliers > best) {
+        if (inliers >= best) {
             best = inliers;
         }
 
@@ -439,10 +439,10 @@ image combine_images(image a, image b, matrix H)
     fprintf(stderr,"%d %d %d %d\n",a.h, a.w, c.h,c.w);
     float value = 0.0;
     for (k = 0; k < b.c; ++k) {
-        for (j = topleft.y; j < botright.y; ++j) {
-            for (i = topleft.x; i < botright.x; ++i) {
-//        for (j=0; j<c.h; j++) {
-//            for (i=0; i<c.w; i++) {
+       for (j = topleft.y; j < botright.y; ++j) {
+           for (i = topleft.x; i < botright.x; ++i) {
+//        for (j=0; j<b.h; j++) {
+//            for (i=0; i<b.w; i++) {
                 point p = project_point(H, make_point(j, i));
                 if (p.x >= 0 && p.y >= 0 && p.y < b.h && p.x < b.w) {
                     value = bilinear_interpolate(b, k, p.y, p.x);

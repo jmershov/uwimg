@@ -48,6 +48,28 @@ image make_integral_image(image im)
 {
     image integ = make_image(im.c, im.h, im.w);
     // TODO: fill in the integral image
+    for (int c = 0; c < im.c; c++) {
+        for (int y = 0; y < im.h; y++) {
+            for (int x = 0; x < im.w; x++) {
+                float value = 0.0;
+                value += get_pixel(im, c, y, x);
+
+                if (y > 0) {
+                    value += get_pixel(integ, c, y - 1, x);
+                }
+
+                if (x > 0) {
+                    value += get_pixel(integ, c, y, x - 1);
+                }
+
+                if (x > 0 && y > 0) {
+                    value -= get_pixel(integ, c, y - 1, x - 1);
+                }
+
+                set_pixel(integ, c, y, x, value);
+            }
+        }
+    }
     return integ;
 }
 
@@ -61,9 +83,25 @@ image box_filter_image(image im, int s)
     image integ = make_integral_image(im);
     image S = make_image(im.c, im.h, im.w);
     // TODO: fill in S using the integral image.
-
-
-    free_image(integ);
+    int offset = floor(s/2);
+    for (k = 0; k < im.c; k++) {
+        for (j = 0; j < im.h; j++) {
+            for (i = 0; i < im.w; i++) {
+                double sum = get_pixel(integ, k, j + offset, i + offset) -
+                            (j<=offset?0:get_pixel(integ, k, j - offset - 1, i + offset)) -
+                            (i<=offset?0:get_pixel(integ, k, j + offset, i - offset - 1)) +
+                            (i<=offset||j<=offset?0:get_pixel(integ, k, j - offset - 1, i - offset - 1));
+                // if (i==767&&j==324) fprintf(stderr,"c=%d h=%d w=%d s=%d off=%d %d %d %d %d\n",k,im.h,im.w,s, offset, 
+                //             i+offset-im.w+1, s-(i+offset-im.w+1),
+                //             (i < offset ? s - offset + i : i+offset>=im.w ? s-(i+offset-im.w+1) : s),
+                //     (j < offset ? s - offset + j : j+offset>=im.h ? s-(j+offset-im.h+1) : s));
+                set_pixel(S, k, j, i, sum / 
+                    ((i < offset ? s - offset + i : i+offset>=im.w ? s-(i+offset-im.w+1) : s) * 
+                    (j < offset ? s - offset + j : j+offset>=im.h ? s-(j+offset-im.h+1) : s)));
+            }
+        }
+    }
+    save_image(S,"dogbox-test");
     return S;
 }
 
@@ -84,7 +122,21 @@ image time_structure_matrix(image im, image prev, int s)
     }
 
     // TODO: calculate gradients, structure components, and smooth them
-    image S;
+    image S = make_image(5, im.h, im.w);
+    image lx = convolve_image(im, make_gx_filter(), 0);
+    image ly = convolve_image(im, make_gy_filter(), 0);
+
+    for (i = 0; i < im.w * im.h; i++) {
+        float ix = lx.data[i];
+        float iy = ly.data[i];
+        float it = im.data[i] - prev.data[i];
+
+        S.data[i] = ix * ix;
+        S.data[i + im.w * im.h] = iy * iy;
+        S.data[i + im.w * im.h * 2] = ix * iy;
+        S.data[i + im.w * im.h * 3] = ix * it;
+        S.data[i + im.w * im.h * 4] = iy * it;
+    }
 
     if(converted){
         free_image(im); free_image(prev);
